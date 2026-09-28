@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#1f6f5c">
+<meta name="robots" content="noindex">
+<title>오늘 점심 뭐 먹지 | 순천·광양·여수</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icon.svg">
+<style>
+:root{--g:#1f6f5c;--g2:#e6f2ee;--bg:#f6f7f5;--card:#fff;--tx:#1d2320;--mu:#6b7570;--ln:#e3e7e4;--warn:#b5462f}
+*{box-sizing:border-box}
+body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Malgun Gothic","Noto Sans KR",sans-serif;background:var(--bg);color:var(--tx);-webkit-tap-highlight-color:transparent}
+header{background:var(--g);color:#fff;padding:14px 16px 0;position:sticky;top:0;z-index:5}
+header h1{font-size:18px;margin:0 0 10px}
+header h1 small{font-weight:400;opacity:.8;font-size:12px;margin-left:6px}
+nav{display:flex;gap:4px}
+nav button{flex:1;background:none;border:0;color:#cfe5de;font-size:15px;padding:10px 0;border-bottom:3px solid transparent;cursor:pointer}
+nav button.on{color:#fff;border-color:#fff;font-weight:700}
+main{max-width:680px;margin:0 auto;padding:14px}
+.card{background:var(--card);border:1px solid var(--ln);border-radius:14px;padding:14px;margin-bottom:12px}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.chips{display:flex;gap:6px;flex-wrap:wrap}
+.chip{border:1px solid var(--ln);background:#fff;border-radius:999px;padding:6px 12px;font-size:14px;cursor:pointer;user-select:none}
+.chip.on{background:var(--g);border-color:var(--g);color:#fff}
+.lbl{font-size:13px;color:var(--mu);margin:10px 0 6px}
+.btn{border:0;border-radius:12px;padding:12px 16px;font-size:16px;font-weight:700;cursor:pointer;background:var(--g);color:#fff}
+.btn.big{width:100%;padding:16px;font-size:18px}
+.btn.ghost{background:var(--g2);color:var(--g)}
+.btn.sm{padding:8px 12px;font-size:14px;border-radius:10px}
+.btn.warn{background:#fbeae6;color:var(--warn)}
+.pick{border:2px solid var(--g);position:relative}
+.pick .tag{position:absolute;top:-10px;left:12px;background:var(--g);color:#fff;font-size:12px;padding:2px 8px;border-radius:6px}
+.alt{border-style:dashed}
+.alt .tag{background:#8aa39a}
+.name{font-size:21px;font-weight:800;margin:4px 0}
+.meta{color:var(--mu);font-size:14px;line-height:1.5}
+.cat{display:inline-block;font-size:12px;padding:2px 8px;border-radius:6px;background:var(--g2);color:var(--g);font-weight:700;margin-right:4px}
+.why{font-size:13px;color:#446;background:#f1f4fb;border-radius:8px;padding:6px 8px;margin-top:8px}
+.acts{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
+a.lnk{font-size:14px;color:var(--g);text-decoration:none;border:1px solid var(--g2);padding:7px 10px;border-radius:10px;background:#fff}
+input[type=text],input[type=number],select{font-size:15px;padding:9px 10px;border:1px solid var(--ln);border-radius:10px;background:#fff;width:100%}
+.list .it{display:flex;justify-content:space-between;gap:8px;padding:10px 0;border-bottom:1px solid var(--ln)}
+.list .it:last-child{border:0}
+.it .t{font-weight:700}
+.it .s{font-size:13px;color:var(--mu)}
+.muted{color:var(--mu);font-size:13px}
+.bar{height:10px;background:var(--g);border-radius:5px}
+.stat{display:grid;grid-template-columns:110px 1fr 28px;gap:8px;align-items:center;font-size:13px;margin:4px 0}
+.hidden{display:none}
+.toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:#222;color:#fff;padding:10px 16px;border-radius:10px;font-size:14px;opacity:0;transition:.25s;pointer-events:none;z-index:9}
+.toast.show{opacity:1}
+.faded{opacity:.45}
+details summary{cursor:pointer;font-weight:700}
+</style>
+</head>
+<body>
+<header>
+  <h1>오늘 점심 뭐 먹지<small>순천·광양·여수</small></h1>
+  <nav>
+    <button data-tab="pick" class="on">추천</button>
+    <button data-tab="list">전체 목록</button>
+    <button data-tab="log">기록</button>
+    <button data-tab="set">설정</button>
+  </nav>
+</header>
+<main>
+  <!-- 추천 -->
+  <section id="tab-pick">
+    <div class="card">
+      <div class="lbl" style="margin-top:0">오늘 어디서?</div>
+      <div class="chips" id="cityChips"></div>
+      <div class="chips" style="margin-top:8px"><span class="chip" id="nearChip">순천은 사무실 근처만 (조례·연향·왕지·용당·신대)</span></div>
+      <div class="lbl">오늘은 빼고 싶은 종류 (선택)</div>
+      <div class="chips" id="skipChips"></div>
+    </div>
+    <button class="btn big" id="goBtn">점심 골라줘</button>
+    <div id="picks" style="margin-top:16px"></div>
+  </section>
+
+  <!-- 목록 -->
+  <section id="tab-list" class="hidden">
+    <div class="card">
+      <input type="text" id="q" placeholder="가게명, 메뉴, 동네 검색">
+      <div class="lbl">지역</div><div class="chips" id="listCity"></div>
+      <div class="lbl">종류</div><div class="chips" id="listCat"></div>
+      <div class="muted" id="listCount" style="margin-top:8px"></div>
+    </div>
+    <div class="card list" id="listBox"></div>
+    <div class="card">
+      <details>
+        <summary>식당 직접 추가</summary>
+        <div class="lbl">가게 이름</div><input type="text" id="addName">
+        <div class="lbl">지역</div><select id="addCity"></select>
+        <div class="lbl">종류</div><select id="addCat"></select>
+        <div class="lbl">대표 메뉴</div><input type="text" id="addMenu" placeholder="예: 김치찌개">
+        <div class="lbl">동네</div><input type="text" id="addArea" placeholder="예: 조례동">
+        <div style="margin-top:12px"><button class="btn" id="addBtn">추가</button></div>
+      </details>
+    </div>
+  </section>
+
+  <!-- 기록 -->
+  <section id="tab-log" class="hidden">
+    <div class="card">
+      <div class="t" style="font-weight:700">최근 30일 메뉴 분포</div>
+      <div id="stats" style="margin-top:8px"></div>
+    </div>
+    <div class="card">
+      <details>
+        <summary>목록에 없는 곳에서 먹었어요</summary>
+        <div class="lbl">어디서 (선택)</div><input type="text" id="extName" placeholder="예: 회사 근처 김밥집">
+        <div class="lbl">종류</div><select id="extCat"></select>
+        <div class="lbl">날짜</div><input type="text" id="extDate">
+        <div style="margin-top:12px"><button class="btn" id="extBtn">기록</button></div>
+      </details>
+    </div>
+    <div class="card list" id="logBox"></div>
+  </section>
+
+  <!-- 설정 -->
+  <section id="tab-set" class="hidden">
+    <div class="card">
+      <div class="lbl" style="margin-top:0">최근 며칠 안에 간 집은 제외할까요?</div>
+      <input type="number" id="setDays" min="0" max="120">
+      <div class="lbl">최근 며칠 안에 먹은 종류는 피할까요? (0이면 끔)</div>
+      <input type="number" id="setCatDays" min="0" max="14">
+      <div class="lbl">점심 가격 상한 (원, 비우면 제한 없음. 가격 정보 없는 집은 그대로 포함)</div>
+      <input type="number" id="setPrice" min="0" step="1000" placeholder="예: 12000">
+      <div class="lbl">카페·브런치도 추천에 넣기</div>
+      <div class="chips"><span class="chip" id="setCafe">포함</span></div>
+      <div style="margin-top:14px"><button class="btn" id="saveSet">저장</button></div>
+    </div>
+    <div class="card">
+      <div class="t" style="font-weight:700">숨긴 식당</div>
+      <div class="list" id="hiddenBox"></div>
+    </div>
+    <div class="card">
+      <div class="t" style="font-weight:700">백업 / 복원</div>
+      <p class="muted">기록은 이 기기 브라우저에만 저장돼요. 폰을 바꾸거나 다른 기기에서 쓰려면 백업 코드를 복사해 두세요.</p>
+      <div class="row"><button class="btn sm ghost" id="expBtn">백업 코드 복사</button><button class="btn sm ghost" id="impBtn">붙여넣어 복원</button></div>
+      <textarea id="impTxt" class="hidden" style="width:100%;height:90px;margin-top:8px;border:1px solid var(--ln);border-radius:10px;padding:8px"></textarea>
+      <div style="margin-top:12px"><button class="btn sm warn" id="resetBtn">기록 전체 삭제</button></div>
+    </div>
+    <p class="muted" id="dataInfo"></p>
+  </section>
+</main>
+<div class="toast" id="toast"></div>
+<script src="data.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
