@@ -17,7 +17,7 @@ header{background:var(--g);color:#fff;padding:14px 16px 0;position:sticky;top:0;
 header h1{font-size:18px;margin:0 0 10px}
 header h1 small{font-weight:400;opacity:.8;font-size:12px;margin-left:6px}
 nav{display:flex;gap:4px}
-nav button{flex:1;background:none;border:0;color:#cfe5de;font-size:15px;padding:10px 0;border-bottom:3px solid transparent;cursor:pointer}
+nav button{flex:1;background:none;border:0;color:#cfe5de;font-size:14px;white-space:nowrap;padding:10px 0;border-bottom:3px solid transparent;cursor:pointer}
 nav button.on{color:#fff;border-color:#fff;font-weight:700}
 main{max-width:680px;margin:0 auto;padding:14px}
 .card{background:var(--card);border:1px solid var(--ln);border-radius:14px;padding:14px;margin-bottom:12px}
@@ -50,6 +50,7 @@ input[type=text],input[type=number],select{font-size:15px;padding:9px 10px;borde
 .bar{height:10px;background:var(--g);border-radius:5px}
 .stat{display:grid;grid-template-columns:110px 1fr 28px;gap:8px;align-items:center;font-size:13px;margin:4px 0}
 .hidden{display:none}
+.card:empty{display:none}
 .toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:#222;color:#fff;padding:10px 16px;border-radius:10px;font-size:14px;opacity:0;transition:.25s;pointer-events:none;z-index:9}
 .toast.show{opacity:1}
 .faded{opacity:.45}
@@ -61,7 +62,8 @@ details summary{cursor:pointer;font-weight:700}
   <h1>오늘 점심 뭐 먹지<small>순천·광양·여수</small></h1>
   <nav>
     <button data-tab="pick" class="on">추천</button>
-    <button data-tab="list">전체 목록</button>
+    <button data-tab="list">목록</button>
+    <button data-tab="add">가게 추가</button>
     <button data-tab="log">기록</button>
     <button data-tab="set">설정</button>
   </nav>
@@ -86,19 +88,32 @@ details summary{cursor:pointer;font-weight:700}
       <input type="text" id="q" placeholder="가게명, 메뉴, 동네 검색">
       <div class="lbl">지역</div><div class="chips" id="listCity"></div>
       <div class="lbl">종류</div><div class="chips" id="listCat"></div>
-      <div class="muted" id="listCount" style="margin-top:8px"></div>
+      <div class="row" style="margin-top:8px;justify-content:space-between"><span class="muted" id="listCount"></span><button class="btn sm ghost" id="goAdd">없는 가게 추가</button></div>
     </div>
     <div class="card list" id="listBox"></div>
+  </section>
+
+  <!-- 가게 추가 -->
+  <section id="tab-add" class="hidden">
+    <div class="card why hidden" id="updBanner"></div>
     <div class="card">
-      <details>
-        <summary>식당 직접 추가</summary>
-        <div class="lbl">가게 이름</div><input type="text" id="addName">
-        <div class="lbl">지역</div><select id="addCity"></select>
-        <div class="lbl">종류</div><select id="addCat"></select>
-        <div class="lbl">대표 메뉴</div><input type="text" id="addMenu" placeholder="예: 김치찌개">
-        <div class="lbl">동네</div><input type="text" id="addArea" placeholder="예: 조례동">
-        <div style="margin-top:12px"><button class="btn" id="addBtn">추가</button></div>
-      </details>
+      <div class="t" style="font-weight:700">새 가게 추가</div>
+      <p class="muted" style="margin:6px 0 0">가게 이름만 입력하면 카카오맵에서 찾아 주소·전화·메뉴 종류를 채워 드려요. 이미 목록에 있는 가게는 최신 정보로 업데이트돼요.</p>
+      <div class="lbl">지역</div><select id="srchCity"></select>
+      <div class="lbl">가게 이름</div>
+      <div class="row" style="flex-wrap:nowrap"><input type="text" id="srchQ" placeholder="예: 봉화식당, 조례동 칼국수"><button class="btn" id="srchBtn" style="white-space:nowrap">찾기</button></div>
+      <div style="margin-top:8px"><button class="btn sm ghost" id="manualBtn">검색 없이 직접 입력</button></div>
+    </div>
+    <div class="card list" id="srchRes" style="min-height:0"></div>
+    <div class="card hidden" id="addForm">
+      <div class="t" style="font-weight:700">추가할 가게 확인</div>
+      <div class="muted" id="addInfo" style="margin-top:4px"></div>
+      <div class="lbl">가게 이름</div><input type="text" id="addName">
+      <div class="lbl">지역</div><select id="addCity"></select>
+      <div class="lbl">종류 (카카오맵 분류로 자동 선택, 바꿀 수 있어요)</div><select id="addCat"></select>
+      <div class="lbl">대표 메뉴 (선택)</div><input type="text" id="addMenu" placeholder="예: 김치찌개">
+      <div class="lbl">동네</div><input type="text" id="addArea" placeholder="예: 조례동">
+      <div style="margin-top:12px"><button class="btn" id="addBtn">목록에 추가</button></div>
     </div>
   </section>
 
