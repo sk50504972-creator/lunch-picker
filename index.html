@@ -55,6 +55,14 @@ input[type=text],input[type=number],select{font-size:15px;padding:9px 10px;borde
 .stars button{background:none;border:0;padding:2px 1px;font-size:22px;line-height:1;color:#d5d9d7;cursor:pointer}
 .stars button.on{color:#f2a900}
 .stars.sm button{font-size:15px;padding:1px 0}
+.badges{display:flex;gap:6px;flex-wrap:wrap;margin:2px 0 6px}
+.badges.sm{margin:3px 0}
+.badge{font-size:13px;font-weight:700;padding:3px 8px;border-radius:8px;white-space:nowrap}
+.badges.sm .badge{font-size:12px;padding:2px 6px}
+.badge.me{background:#fff4d6;color:#8a5d00}
+.badge.k{background:#fde9e6;color:#b33a1f}
+.badge.k.few{opacity:.7}
+.badge.off{background:#f0f2f1;color:#8b938f;font-weight:400}
 .stars .score{font-style:normal;font-size:13px;color:var(--mu);margin-left:6px;font-weight:700}
 .card:empty{display:none}
 .toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:#222;color:#fff;padding:10px 16px;border-radius:10px;font-size:14px;opacity:0;transition:.25s;pointer-events:none;z-index:9}
@@ -94,7 +102,7 @@ details summary{cursor:pointer;font-weight:700}
       <input type="text" id="q" placeholder="가게명, 메뉴, 동네 검색">
       <div class="lbl">지역</div><div class="chips" id="listCity"></div>
       <div class="lbl">종류</div><div class="chips" id="listCat"></div>
-      <div class="chips" style="margin-top:8px"><span class="chip" id="sortRate">별점 준 집만, 높은 순</span></div>
+      <div class="chips" style="margin-top:8px"><span class="chip" id="sortRate">내 별점 높은 순</span><span class="chip" id="sortK">카카오맵 평점 높은 순</span></div>
       <div class="row" style="margin-top:8px;justify-content:space-between"><span class="muted" id="listCount"></span><button class="btn sm ghost" id="goAdd">없는 가게 추가</button></div>
     </div>
     <div class="card list" id="listBox"></div>

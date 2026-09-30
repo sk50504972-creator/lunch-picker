@@ -132,6 +132,7 @@
   function card(r, label, why, main) {
     return '<div class="card ' + (main ? 'pick' : 'alt') + '"><span class="tag">' + label + '</span>' +
       '<div class="name">' + esc(r.name) + '</div>' +
+      '<div class="badges">' + badges(r) + '</div>' +
       '<div class="meta"><span class="cat">' + esc(r.category) + '</span>' + esc(r.city) + (r.area ? ' ' + esc(r.area) : '') + kmTxt(r) + '</div>' +
       '<div class="meta">' + esc(r.menu || '') + (r.price ? ' · ' + priceTxt(r.price) : '') + '</div>' +
       (r.note ? '<div class="meta">' + esc(r.note) + '</div>' : '') +
@@ -175,6 +176,15 @@
   function getRate(id) { return st.rating[id] ? st.rating[id].s : 0; }
   // 별점 가중치: 미평가 1, 1점 0.1, 5점 1(보통), 10점 3
   function rateW(id) { var s = getRate(id); if (!s) return 1; return s <= 5 ? 0.1 + (s - 1) * 0.225 : 1 + (s - 5) * 0.4; }
+  // 추천·목록에 보여 주는 평점 배지: 내 별점 + 카카오맵 평점(5점 만점을 10점으로 환산)
+  function badges(r) {
+    var s = getRate(r.id);
+    var me = '<span class="badge me' + (s ? '' : ' off') + '" data-me="' + esc(r.id) + '">' + (s ? '내 별점 ★ ' + s + '/10' : '내 별점 없음') + '</span>';
+    var k = r.kScore ? '<span class="badge k' + (r.kCount < 5 ? ' few' : '') + '">카카오맵 ★ ' + r.kScore.toFixed(1) + '/10 · 리뷰 ' + r.kCount + '</span>' : '<span class="badge off">카카오맵 평점 없음</span>';
+    return me + k;
+  }
+  // 리뷰가 적은 곳의 만점이 맨 위로 오지 않게 보정(베이지안 평균, 기준 7점·리뷰 5개)
+  function kRank(r) { return r.kScore ? (r.kScore * r.kCount + 7 * 5) / (r.kCount + 5) : 0; }
   function scoreTxt(s) { return s ? s + '/10' : '미평가'; }
   function stars(id, small) {
     var s = getRate(id), h = '<span class="stars' + (small ? ' sm' : '') + '" data-stars="' + esc(id) + '">';
@@ -199,6 +209,11 @@
       sp.querySelectorAll('button').forEach(function (b) { b.classList.toggle('on', +b.getAttribute('data-rate') <= s); });
       sp.querySelector('.score').textContent = scoreTxt(s);
     });
+    document.querySelectorAll('.badge.me').forEach(function (b) {
+      if (b.getAttribute('data-me') !== id) return;
+      b.textContent = s ? '내 별점 ★ ' + s + '/10' : '내 별점 없음';
+      b.classList.toggle('off', !s);
+    });
   }
 
   // ---------- list ----------
@@ -206,7 +221,8 @@
   function renderList() {
     chips($('#listCity'), CITIES, lf.cities, function (v) { tog(lf.cities, v); renderList(); });
     chips($('#listCat'), CATS, lf.cats, function (v) { tog(lf.cats, v); renderList(); });
-    var sr = $('#sortRate'); sr.classList.toggle('on', !!lf.byRate); sr.onclick = function () { lf.byRate = !lf.byRate; renderList(); };
+    var sr = $('#sortRate'); sr.classList.toggle('on', !!lf.byRate); sr.onclick = function () { lf.byRate = !lf.byRate; if (lf.byRate) lf.byK = false; renderList(); };
+    var sk = $('#sortK'); sk.classList.toggle('on', !!lf.byK); sk.onclick = function () { lf.byK = !lf.byK; if (lf.byK) lf.byRate = false; renderList(); };
     var q = ($('#q').value || '').trim().toLowerCase();
     var hid = {}; st.hidden.forEach(function (x) { hid[x] = 1; });
     var rows = all().filter(function (r) {
@@ -216,11 +232,14 @@
       return true;
     });
     if (lf.byRate) rows = rows.filter(function (r) { return getRate(r.id); });
-    if (lf.byRate) rows.sort(function (a, b) { return getRate(b.id) - getRate(a.id) || a.name.localeCompare(b.name, 'ko'); }); else rows.sort(function (a, b) { return a.city === b.city ? a.name.localeCompare(b.name, 'ko') : CITIES.indexOf(a.city) - CITIES.indexOf(b.city); });
+    if (lf.byRate) rows.sort(function (a, b) { return getRate(b.id) - getRate(a.id) || a.name.localeCompare(b.name, 'ko'); });
+    else if (lf.byK) rows.sort(function (a, b) { return kRank(b) - kRank(a) || a.name.localeCompare(b.name, 'ko'); });
+    else rows.sort(function (a, b) { return a.city === b.city ? a.name.localeCompare(b.name, 'ko') : CITIES.indexOf(a.city) - CITIES.indexOf(b.city); });
     $('#listCount').textContent = rows.length + '곳';
     $('#listBox').innerHTML = rows.map(function (r) {
       var lv = lastVisit(r.id);
       return '<div class="it' + (hid[r.id] ? ' faded' : '') + '"><div><div class="t">' + esc(r.name) + (r.custom ? ' <span class="muted">(직접 추가)</span>' : '') + (r.unverified && !r.kakaoId ? ' <span class="muted">(카카오맵 미등록)</span>' : '') + '</div>' +
+        '<div class="badges sm">' + badges(r) + '</div>' +
         '<div class="s"><span class="cat">' + esc(r.category) + '</span>' + esc(r.city) + ' ' + esc(r.area || '') + kmTxt(r) + ' · ' + esc(r.menu || '') + (r.price ? ' · ' + priceTxt(r.price) : '') + '</div>' +
         (r.address ? '<div class="s">' + esc(r.address) + (r.phone ? ' · <a href="tel:' + esc(r.phone) + '" style="color:var(--g)">' + esc(r.phone) + '</a>' : '') + '</div>' : '') +
         '<div class="s">' + stars(r.id, true) + '</div>' +
