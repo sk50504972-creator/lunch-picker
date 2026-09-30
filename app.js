@@ -20,6 +20,7 @@
       price: d.price || null,
       cafe: !!d.cafe,
       nearOnly: !!d.nearOnly,
+      rating: d.rating || {},      // id -> {s:1~10, d:'YYYY-MM-DD'} (10점 만점)
       over: d.over || {}           // id -> 카카오맵에서 갱신한 정보
     };
   }
@@ -110,8 +111,9 @@
       used[cat] = 1;
       var r = weightedPick(groups[cat], function (x) {
         var lv = lastVisit(x.id);
-        if (lv === null) return 1.6;             // 한 번도 안 간 집 가산
-        return Math.min(1.4, 0.4 + lv / 30);     // 오래전에 간 집일수록 ↑
+        var rw = rateW(x.id);                    // 내 별점: 높을수록 ↑, 1점은 거의 안 나옴
+        if (lv === null) return (getRate(x.id) ? 1.2 : 1.6) * rw; // 한 번도 안 간 집 가산
+        return Math.min(1.4, 0.4 + lv / 30) * rw; // 오래전에 간 집일수록 ↑
       });
       picks.push({ r: r, why: whyText(r, cnt, avoid) });
     }
@@ -122,6 +124,7 @@
     var a = [];
     a.push(cnt[r.category] === 0 ? '최근 30일 동안 ' + r.category + ' 안 먹음' : '최근 30일 ' + r.category + ' ' + cnt[r.category] + '번');
     a.push(lv === null ? '처음 가는 집' : lv + '일 전에 방문');
+    if (getRate(r.id)) a.push('내 별점 ' + getRate(r.id) + '/10');
     if (avoid[r.category]) a.push('후보가 적어 최근 먹은 종류 포함');
     return a.join(' · ');
   }
@@ -134,6 +137,7 @@
       (r.note ? '<div class="meta">' + esc(r.note) + '</div>' : '') +
       (r.address ? '<div class="meta">' + esc(r.address) + '</div>' : '') +
       (why ? '<div class="why">' + esc(why) + '</div>' : '') +
+      '<div class="rate"><span class="muted">내 별점</span>' + stars(r.id) + '</div>' +
       '<div class="acts"><button class="btn sm" data-ate="' + esc(r.id) + '">여기서 먹었어요</button>' + mapLinks(r) +
       '<button class="btn sm ghost" data-hide="' + esc(r.id) + '">다시 안 볼래요</button></div></div>';
   }
@@ -157,20 +161,52 @@
     save(); toast('숨겼어요. 설정에서 되돌릴 수 있어요');
   }
   document.addEventListener('click', function (e) {
-    var a = e.target.closest('[data-ate]'); if (a) { ate(a.getAttribute('data-ate')); var c = a.closest('.card'); if (c && c.parentNode.id === 'picks') { $('#picks').innerHTML = card(byId(a.getAttribute('data-ate')), '오늘 점심', '맛있게 드세요', true); } return; }
+    var a = e.target.closest('[data-ate]'); if (a) { ate(a.getAttribute('data-ate')); var c = a.closest('.card'); if (c && c.parentNode.id === 'picks') { $('#picks').innerHTML = card(byId(a.getAttribute('data-ate')), '오늘 점심', '맛있게 드세요. 다녀오시면 아래 별점(10점 만점)을 눌러 주세요', true); } return; }
     var h = e.target.closest('[data-hide]'); if (h) { hide(h.getAttribute('data-hide')); var c2 = h.closest('.card'); if (c2) c2.remove(); renderList(); return; }
     var u = e.target.closest('[data-unhide]'); if (u) { st.hidden = st.hidden.filter(function (x) { return x !== u.getAttribute('data-unhide'); }); save(); renderHidden(); renderList(); return; }
     var d = e.target.closest('[data-dellog]'); if (d) { st.log.splice(+d.getAttribute('data-dellog'), 1); save(); renderLog(); return; }
+    var rt = e.target.closest('[data-rate]'); if (rt) { var sp = rt.parentNode; setRate(sp.getAttribute('data-stars'), +rt.getAttribute('data-rate')); return; }
     var ch = e.target.closest('[data-choose]'); if (ch) { choose(+ch.getAttribute('data-choose')); return; }
     var up = e.target.closest('[data-upd]'); if (up) { var tr = byId(up.getAttribute('data-upd')); if (tr) { $('#srchCity').value = tr.city; openAdd(tr.name.replace(/\(.*?\)/g, ''), tr); } return; }
     var dc = e.target.closest('[data-delcustom]'); if (dc) { st.custom = st.custom.filter(function (x) { return x.id !== dc.getAttribute('data-delcustom'); }); save(); renderList(); return; }
   });
+
+  // ---------- 별점 ----------
+  function getRate(id) { return st.rating[id] ? st.rating[id].s : 0; }
+  // 별점 가중치: 미평가 1, 1점 0.1, 5점 1(보통), 10점 3
+  function rateW(id) { var s = getRate(id); if (!s) return 1; return s <= 5 ? 0.1 + (s - 1) * 0.225 : 1 + (s - 5) * 0.4; }
+  function scoreTxt(s) { return s ? s + '/10' : '미평가'; }
+  function stars(id, small) {
+    var s = getRate(id), h = '<span class="stars' + (small ? ' sm' : '') + '" data-stars="' + esc(id) + '">';
+    for (var i = 1; i <= 10; i++) h += '<button type="button" aria-label="별점 ' + i + '점" data-rate="' + i + '"' + (i <= s ? ' class="on"' : '') + '>★</button>';
+    return h + '<em class="score">' + scoreTxt(s) + '</em></span>';
+  }
+  function rateMsg(n) {
+    if (n <= 2) return '별로예요. 추천에 거의 안 나와요';
+    if (n <= 4) return '아쉬워요. 추천을 줄일게요';
+    if (n <= 6) return '보통이에요';
+    if (n <= 8) return '좋아요. 더 자주 추천할게요';
+    return '최고예요. 자주 추천할게요';
+  }
+  function setRate(id, n) {
+    if (!id) return;
+    if (getRate(id) === n) { delete st.rating[id]; toast('별점을 지웠어요'); }
+    else { st.rating[id] = { s: n, d: today() }; toast(n + '/10 · ' + rateMsg(n)); }
+    save();
+    var s = getRate(id);
+    document.querySelectorAll('.stars').forEach(function (sp) {
+      if (sp.getAttribute('data-stars') !== id) return;
+      sp.querySelectorAll('button').forEach(function (b) { b.classList.toggle('on', +b.getAttribute('data-rate') <= s); });
+      sp.querySelector('.score').textContent = scoreTxt(s);
+    });
+  }
 
   // ---------- list ----------
   var lf = { cities: CITIES.slice(), cats: [] };
   function renderList() {
     chips($('#listCity'), CITIES, lf.cities, function (v) { tog(lf.cities, v); renderList(); });
     chips($('#listCat'), CATS, lf.cats, function (v) { tog(lf.cats, v); renderList(); });
+    var sr = $('#sortRate'); sr.classList.toggle('on', !!lf.byRate); sr.onclick = function () { lf.byRate = !lf.byRate; renderList(); };
     var q = ($('#q').value || '').trim().toLowerCase();
     var hid = {}; st.hidden.forEach(function (x) { hid[x] = 1; });
     var rows = all().filter(function (r) {
@@ -179,13 +215,15 @@
       if (q && (r.name + ' ' + (r.menu || '') + ' ' + (r.area || '') + ' ' + (r.note || '')).toLowerCase().indexOf(q) < 0) return false;
       return true;
     });
-    rows.sort(function (a, b) { return a.city === b.city ? a.name.localeCompare(b.name, 'ko') : CITIES.indexOf(a.city) - CITIES.indexOf(b.city); });
+    if (lf.byRate) rows = rows.filter(function (r) { return getRate(r.id); });
+    if (lf.byRate) rows.sort(function (a, b) { return getRate(b.id) - getRate(a.id) || a.name.localeCompare(b.name, 'ko'); }); else rows.sort(function (a, b) { return a.city === b.city ? a.name.localeCompare(b.name, 'ko') : CITIES.indexOf(a.city) - CITIES.indexOf(b.city); });
     $('#listCount').textContent = rows.length + '곳';
     $('#listBox').innerHTML = rows.map(function (r) {
       var lv = lastVisit(r.id);
       return '<div class="it' + (hid[r.id] ? ' faded' : '') + '"><div><div class="t">' + esc(r.name) + (r.custom ? ' <span class="muted">(직접 추가)</span>' : '') + (r.unverified && !r.kakaoId ? ' <span class="muted">(카카오맵 미등록)</span>' : '') + '</div>' +
         '<div class="s"><span class="cat">' + esc(r.category) + '</span>' + esc(r.city) + ' ' + esc(r.area || '') + kmTxt(r) + ' · ' + esc(r.menu || '') + (r.price ? ' · ' + priceTxt(r.price) : '') + '</div>' +
         (r.address ? '<div class="s">' + esc(r.address) + (r.phone ? ' · <a href="tel:' + esc(r.phone) + '" style="color:var(--g)">' + esc(r.phone) + '</a>' : '') + '</div>' : '') +
+        '<div class="s">' + stars(r.id, true) + '</div>' +
         '<div class="s">' + (lv === null ? '' : lv + '일 전 방문 · ') + mapMini(r) + '</div></div>' +
         '<div style="display:flex;flex-direction:column;gap:4px">' +
         (hid[r.id] ? '<button class="btn sm ghost" data-unhide="' + esc(r.id) + '">숨김 해제</button>' : '<button class="btn sm" data-ate="' + esc(r.id) + '">먹었어요</button>') +
@@ -208,7 +246,7 @@
     var idx = st.log.map(function (l, i) { return i; }).sort(function (a, b) { return st.log[b].date.localeCompare(st.log[a].date); });
     $('#logBox').innerHTML = idx.length ? idx.map(function (i) {
       var l = st.log[i];
-      return '<div class="it"><div><div class="t">' + esc(l.name || '(이름 없음)') + '</div><div class="s">' + esc(l.date) + ' · <span class="cat">' + esc(l.cat) + '</span>' + esc(l.city || '') + '</div></div>' +
+      return '<div class="it"><div><div class="t">' + esc(l.name || '(이름 없음)') + '</div>' + (l.id && byId(l.id) ? '<div class="s">' + stars(l.id, true) + '</div>' : '') + '<div class="s">' + esc(l.date) + ' · <span class="cat">' + esc(l.cat) + '</span>' + esc(l.city || '') + '</div></div>' +
         '<button class="btn sm warn" data-dellog="' + i + '">삭제</button></div>';
     }).join('') : '<div class="muted">아직 기록이 없어요. 추천 화면에서 "여기서 먹었어요"를 누르면 쌓여요.</div>';
   }
